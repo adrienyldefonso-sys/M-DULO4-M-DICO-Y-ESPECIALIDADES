@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MedicoRepository extends JpaRepository<Medico, Long> {
-    // Al heredar de JpaRepository, ya cuentas con los métodos CRUD básicos (save, findAll, findById, deleteById, etc.)
+    boolean existsByCmp(String cmp); // valida CMP duplicado antes de guardar
 }

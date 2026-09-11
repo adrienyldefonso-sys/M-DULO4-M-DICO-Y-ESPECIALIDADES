@@ -2,8 +2,11 @@ package com.hospital.medicos.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "medicos")
@@ -13,18 +16,22 @@ public class Medico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El nombre es obligatorio")
     @Column(nullable = false, length = 100)
     private String nombre;
 
+    @NotBlank(message = "El apellido es obligatorio")
     @Column(nullable = false, length = 100)
     private String apellido;
 
-    @Column(nullable = false, length = 20) // Se quitó unique = true
+    @NotBlank(message = "El CMP es obligatorio")
+    @Column(nullable = false, length = 20, unique = true)
     private String cmp;
 
     @Column(length = 15)
     private String telefono;
 
+    @Email(message = "El correo no tiene un formato válido")
     @Column(length = 100)
     private String email;
 
@@ -67,4 +74,17 @@ public class Medico {
 
     public List<Especialidad> getEspecialidades() { return especialidades; }
     public void setEspecialidades(List<Especialidad> especialidades) { this.especialidades = especialidades; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Medico)) return false;
+        Medico medico = (Medico) o;
+        return id != null && id.equals(medico.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }
