@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Médicos y Especialidades — Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+          --bg: #F5F8FA;
+          --surface: #FFFFFF;
+          --navy: #163247;
+          --navy-light: #24506E;
+          --teal: #2F8F84;
+          --teal-dark: #22685F;
+          --border: #DCE4EA;
+          --text: #1B2530;
+          --muted: #64778A;
+          --danger: #B23A2E;
+          --danger-bg: #FBEAE8;
+          --ok-bg: #E9F5F1;
+        }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          background: var(--bg);
+          color: var(--text);
+          font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+          font-size: 15px;
+          line-height: 1.5;
+        }
+        header {
+          background: var(--navy);
+          color: #fff;
+          padding: 28px 32px 24px;
+        }
+        header h1 {
+          margin: 0 0 4px;
+          font-size: 22px;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+        }
+        header p {
+          margin: 0;
+          color: #A9BECB;
+          font-size: 13.5px;
+        }
+        .api-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 12px;
+          font-size: 12.5px;
+          color: #A9BECB;
+        }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+        .dot.ok { background: #5FBBA2; }
+        .dot.err { background: #E08070; }
+
+        nav.tabs {
+          display: flex;
+          gap: 2px;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
+          padding: 0 32px;
+        }
+        nav.tabs button {
+          border: none;
+          background: none;
+          padding: 14px 18px;
+          font: inherit;
+          font-weight: 500;
+          color: var(--muted);
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+        }
+        nav.tabs button.active {
+          color: var(--navy);
+          border-bottom-color: var(--teal);
+        }
+
+        main { max-width: 1080px; margin: 0 auto; padding: 28px 32px 80px; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 22px 24px;
+          margin-bottom: 22px;
+        }
+        .card h2 {
+          margin: 0 0 4px;
+          font-size: 17px;
+          font-weight: 600;
+        }
+        .card .hint { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 14px;
+        }
+        label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+        input, textarea {
+          width: 100%;
+          padding: 9px 10px;
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          font: inherit;
+          background: #fff;
+          color: var(--text);
+        }
+        input:focus, textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+
+        .form-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+        button.primary {
+          background: var(--teal);
+          color: #fff;
+          border: none;
+          padding: 10px 18px;
+          border-radius: 6px;
+          font: inherit;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        button.primary:hover { background: var(--teal-dark); }
+        button.ghost {
+          background: none;
+          border: 1px solid var(--border);
+          padding: 9px 14px;
+          border-radius: 6px;
+          font: inherit;
+          color: var(--muted);
+          cursor: pointer;
+        }
+        button.ghost:hover { border-color: var(--muted); color: var(--text); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th {
+          text-align: left;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--muted);
+          padding: 8px 10px;
+          border-bottom: 1px solid var(--border);
+        }
+        td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+
+        .badge {
+          display: inline-block;
+          padding: 2px 9px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .badge.on { background: var(--ok-bg); color: var(--teal-dark); }
+        .badge.off { background: var(--danger-bg); color: var(--danger); }
+        .chip {
+          display: inline-block;
+          padding: 2px 9px;
+          margin: 2px 3px 0 0;
+          border-radius: 20px;
+          background: #EAF0F4;
+          color: var(--navy-light);
+          font-size: 12px;
+        }
+
+        .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .row-actions button {
+          font-size: 12.5px;
+          padding: 5px 10px;
+          border-radius: 5px;
+          border: 1px solid var(--border);
+          background: #fff;
+          cursor: pointer;
+          color: var(--navy-light);
+        }
+        .row-actions button:hover { background: var(--bg); }
+        .row-actions button.danger { color: var(--danger); }
+
+        .assoc-box {
+          margin-top: 8px;
+          padding: 10px;
+          border: 1px dashed var(--border);
+          border-radius: 6px;
+          background: var(--bg);
+        }
+        .assoc-box label.check {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          margin: 3px 10px 3px 0;
+          font-weight: 400;
+          color: var(--text);
+          font-size: 13px;
+        }
+        .assoc-box input[type=checkbox] { width: auto; }
+
+        .empty { color: var(--muted); font-size: 13.5px; padding: 10px 0; }
+
+        #toast {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          max-width: 340px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 13.5px;
+          box-shadow: 0 4px 16px rgba(0,0,0,.15);
+          display: none;
+          z-index: 50;
+        }
+        #toast.show { display: block; }
+        #toast.ok { background: var(--navy); color: #fff; }
+        #toast.err { background: var(--danger); color: #fff; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Médicos y Especialidades</h1>
+    <p>Panel de administración — módulo RF-MED-01 al RF-MED-09</p>
+    <div class="api-status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Verificando conexión con la API…</span>
+    </div>
+</header>
+
+<nav class="tabs">
+    <button class="active" data-tab="medicos">Médicos</button>
+    <button data-tab="especialidades">Especialidades</button>
+</nav>
+
+<main>
+
+    <!-- ===================== MÉDICOS ===================== -->
+    <section class="panel active" id="panel-medicos">
+        <div class="card">
+            <h2 id="medicoFormTitle">Registrar médico</h2>
+            <p class="hint">RF-MED-01 · Completa los datos y guarda. El CMP debe ser único.</p>
+            <form id="medicoForm">
+                <input type="hidden" id="medicoId">
+                <div class="grid">
+                    <div><label>Nombre</label><input id="medicoNombre" required></div>
+                    <div><label>Apellido</label><input id="medicoApellido" required></div>
+                    <div><label>CMP</label><input id="medicoCmp" required></div>
+                    <div><label>Teléfono</label><input id="medicoTelefono"></div>
+                    <div><label>Correo</label><input id="medicoEmail" type="email"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="primary" id="medicoSubmitBtn">Registrar médico</button>
+                    <button type="button" class="ghost" id="medicoCancelBtn" style="display:none">Cancelar edición</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Médicos registrados</h2>
+            <p class="hint">RF-MED-02 · RF-MED-03 · RF-MED-04 · RF-MED-06</p>
+            <table>
+                <thead>
+                <tr><th>Médico</th><th>CMP</th><th>Contacto</th><th>Especialidades</th><th>Estado</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="medicosTbody"></tbody>
+            </table>
+            <div class="empty" id="medicosEmpty" style="display:none">Aún no hay médicos registrados.</div>
+        </div>
+    </section>
+
+    <!-- ===================== ESPECIALIDADES ===================== -->
+    <section class="panel" id="panel-especialidades">
+        <div class="card">
+            <h2 id="espFormTitle">Registrar especialidad</h2>
+            <p class="hint">RF-MED-07 · El nombre es obligatorio.</p>
+            <form id="espForm">
+                <input type="hidden" id="espId">
+                <div class="grid">
+                    <div><label>Nombre</label><input id="espNombre" required></div>
+                    <div style="grid-column: span 2"><label>Descripción</label><input id="espDescripcion"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="primary" id="espSubmitBtn">Registrar especialidad</button>
+                    <button type="button" class="ghost" id="espCancelBtn" style="display:none">Cancelar edición</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Especialidades registradas</h2>
+            <p class="hint">RF-MED-08 · RF-MED-09</p>
+            <table>
+                <thead>
+                <tr><th>Nombre</th><th>Descripción</th><th>Estado</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="espTbody"></tbody>
+            </table>
+            <div class="empty" id="espEmpty" style="display:none">Aún no hay especialidades registradas.</div>
+        </div>
+    </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+    const API = 'http://localhost:8080/api';
+    let especialidadesCache = [];
+    let medicosCache = [];
+    let assocOpenFor = null;
+
+    // ---------- helpers ----------
+    function toast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show ' + (isError ? 'err' : 'ok');
+      clearTimeout(toast._h);
+      toast._h = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    async function api(path, options) {
+      const res = await fetch(API + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      let body = null;
+      try { body = await res.json(); } catch (e) { /* sin body, ok para 204 */ }
+      if (!res.ok) {
+        let msg = (body && (body.error || (body.errores && Object.values(body.errores).join(', ')))) || ('Error ' + res.status);
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    async function checkApi() {
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+      try {
+        await api('/medicos');
+        dot.className = 'dot ok';
+        txt.textContent = 'Conectado a ' + API;
+      } catch (e) {
+        dot.className = 'dot err';
+        txt.textContent = 'Sin conexión con la API — verifica que el backend esté corriendo en el puerto 8080';
+      }
+    }
+
+    // ---------- tabs ----------
+    document.querySelectorAll('nav.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ================= ESPECIALIDADES =================
+    async function loadEspecialidades() {
+      try {
+        especialidadesCache = await api('/especialidades');
+      } catch (e) {
+        toast('No se pudieron cargar las especialidades: ' + e.message, true);
+        especialidadesCache = [];
+      }
+      renderEspecialidades();
+    }
+
+    function renderEspecialidades() {
+      const tbody = document.getElementById('espTbody');
+      tbody.innerHTML = '';
+      document.getElementById('espEmpty').style.display = especialidadesCache.length ? 'none' : 'block';
+      especialidadesCache.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(e.nombre)}</strong></td>
+          <td>${escapeHtml(e.descripcion || '—')}</td>
+          <td><span class="badge ${e.estado ? 'on' : 'off'}">${e.estado ? 'Activa' : 'Inactiva'}</span></td>
+          <td class="row-actions">
+            <button data-edit="${e.id}">Editar</button>
+            <button data-toggle="${e.id}" data-estado="${e.estado}">${e.estado ? 'Desactivar' : 'Activar'}</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editEspecialidad(b.dataset.edit)));
+      tbody.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => toggleEspecialidad(b.dataset.toggle, b.dataset.estado === 'true')));
+    }
+
+    function editEspecialidad(id) {
+      const e = especialidadesCache.find(x => String(x.id) === String(id));
+      if (!e) return;
+      document.getElementById('espId').value = e.id;
+      document.getElementById('espNombre').value = e.nombre;
+      document.getElementById('espDescripcion').value = e.descripcion || '';
+      document.getElementById('espFormTitle').textContent = 'Modificar especialidad';
+      document.getElementById('espSubmitBtn').textContent = 'Guardar cambios';
+      document.getElementById('espCancelBtn').style.display = 'inline-block';
+      document.getElementById('panel-especialidades').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetEspForm() {
+      document.getElementById('espForm').reset();
+      document.getElementById('espId').value = '';
+      document.getElementById('espFormTitle').textContent = 'Registrar especialidad';
+      document.getElementById('espSubmitBtn').textContent = 'Registrar especialidad';
+      document.getElementById('espCancelBtn').style.display = 'none';
+    }
+    document.getElementById('espCancelBtn').addEventListener('click', resetEspForm);
+
+    document.getElementById('espForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const id = document.getElementById('espId').value;
+      const payload = {
+        nombre: document.getElementById('espNombre').value.trim(),
+        descripcion: document.getElementById('espDescripcion').value.trim()
+      };
+      try {
+        if (id) {
+          await api('/especialidades/' + id, { method: 'PUT', body: JSON.stringify(payload) });
+          toast('Especialidad actualizada.');
+        } else {
+          await api('/especialidades', { method: 'POST', body: JSON.stringify(payload) });
+          toast('Especialidad registrada.');
+        }
+        resetEspForm();
+        await loadEspecialidades();
+        renderMedicos(); // por si hay chips de especialidad que mostrar
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+
+    async function toggleEspecialidad(id, estadoActual) {
+      try {
+        await api(`/especialidades/${id}/estado?estado=${!estadoActual}`, { method: 'PATCH' });
+        toast('Estado actualizado.');
+        await loadEspecialidades();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    }
+
+    // ================= MÉDICOS =================
+    async function loadMedicos() {
+      try {
+        medicosCache = await api('/medicos');
+      } catch (e) {
+        toast('No se pudieron cargar los médicos: ' + e.message, true);
+        medicosCache = [];
+      }
+      renderMedicos();
+    }
+
+    function renderMedicos() {
+      const tbody = document.getElementById('medicosTbody');
+      tbody.innerHTML = '';
+      document.getElementById('medicosEmpty').style.display = medicosCache.length ? 'none' : 'block';
+
+      medicosCache.forEach(m => {
+        const tr = document.createElement('tr');
+        const especialidadesChips = (m.especialidades || []).map(e => `<span class="chip">${escapeHtml(e.nombre)}</span>`).join('') || '<span class="empty" style="padding:0">Sin especialidades</span>';
+
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(m.nombre)} ${escapeHtml(m.apellido)}</strong></td>
+          <td>${escapeHtml(m.cmp)}</td>
+          <td>${escapeHtml(m.telefono || '—')}<br><span style="color:var(--muted)">${escapeHtml(m.email || '—')}</span></td>
+          <td>${especialidadesChips}</td>
+          <td><span class="badge ${m.estado ? 'on' : 'off'}">${m.estado ? 'Activo' : 'Inactivo'}</span></td>
+          <td class="row-actions">
+            <button data-edit="${m.id}">Editar</button>
+            <button data-toggle="${m.id}" data-estado="${m.estado}">${m.estado ? 'Desactivar' : 'Activar'}</button>
+            <button data-assoc="${m.id}">Especialidades</button>
+          </td>`;
+        tbody.appendChild(tr);
+
+        if (assocOpenFor === m.id) {
+          const trAssoc = document.createElement('tr');
+          const tdAssoc = document.createElement('td');
+          tdAssoc.colSpan = 6;
+          const checks = especialidadesCache.map(e => {
+            const checked = (m.especialidades || []).some(me => me.id === e.id) ? 'checked' : '';
+            return `<label class="check"><input type="checkbox" value="${e.id}" ${checked}> ${escapeHtml(e.nombre)}</label>`;
+          }).join('') || '<span class="empty" style="padding:0">Registra especialidades primero en la otra pestaña.</span>';
+          tdAssoc.innerHTML = `
+            <div class="assoc-box">
+              <div style="margin-bottom:8px; font-weight:500">Especialidades de ${escapeHtml(m.nombre)} ${escapeHtml(m.apellido)}</div>
+              ${checks}
+              <div class="form-actions">
+                <button class="primary" type="button" id="assocSave">Guardar asociación</button>
+                <button class="ghost" type="button" id="assocClose">Cerrar</button>
+              </div>
+            </div>`;
+          trAssoc.appendChild(tdAssoc);
+          tbody.appendChild(trAssoc);
+
+          tdAssoc.querySelector('#assocSave').addEventListener('click', () => saveAssociacion(m.id, tdAssoc));
+          tdAssoc.querySelector('#assocClose').addEventListener('click', () => { assocOpenFor = null; renderMedicos(); });
+        }
+      });
+
+      tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editMedico(b.dataset.edit)));
+      tbody.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => toggleMedico(b.dataset.toggle, b.dataset.estado === 'true')));
+      tbody.querySelectorAll('[data-assoc]').forEach(b => b.addEventListener('click', () => {
+        const id = Number(b.dataset.assoc);
+        assocOpenFor = assocOpenFor === id ? null : id;
+        renderMedicos();
+      }));
+    }
+
+    async function saveAssociacion(medicoId, container) {
+      const ids = Array.from(container.querySelectorAll('input[type=checkbox]:checked')).map(c => Number(c.value));
+      try {
+        await api(`/medicos/${medicoId}/especialidades`, { method: 'POST', body: JSON.stringify(ids) });
+        toast('Especialidades asociadas.');
+        assocOpenFor = null;
+        await loadMedicos();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    }
+
+    function editMedico(id) {
+      const m = medicosCache.find(x => String(x.id) === String(id));
+      if (!m) return;
+      document.getElementById('medicoId').value = m.id;
+      document.getElementById('medicoNombre').value = m.nombre;
+      document.getElementById('medicoApellido').value = m.apellido;
+      document.getElementById('medicoCmp').value = m.cmp;
+      document.getElementById('medicoTelefono').value = m.telefono || '';
+      document.getElementById('medicoEmail').value = m.email || '';
+      document.getElementById('medicoFormTitle').textContent = 'Modificar médico';
+      document.getElementById('medicoSubmitBtn').textContent = 'Guardar cambios';
+      document.getElementById('medicoCancelBtn').style.display = 'inline-block';
+      document.getElementById('panel-medicos').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetMedicoForm() {
+      document.getElementById('medicoForm').reset();
+      document.getElementById('medicoId').value = '';
+      document.getElementById('medicoFormTitle').textContent = 'Registrar médico';
+      document.getElementById('medicoSubmitBtn').textContent = 'Registrar médico';
+      document.getElementById('medicoCancelBtn').style.display = 'none';
+    }
+    document.getElementById('medicoCancelBtn').addEventListener('click', resetMedicoForm);
+
+    document.getElementById('medicoForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const id = document.getElementById('medicoId').value;
+      const payload = {
+        nombre: document.getElementById('medicoNombre').value.trim(),
+        apellido: document.getElementById('medicoApellido').value.trim(),
+        cmp: document.getElementById('medicoCmp').value.trim(),
+        telefono: document.getElementById('medicoTelefono').value.trim(),
+        email: document.getElementById('medicoEmail').value.trim()
+      };
+      try {
+        if (id) {
+          await api('/medicos/' + id, { method: 'PUT', body: JSON.stringify(payload) });
+          toast('Médico actualizado.');
+        } else {
+          await api('/medicos', { method: 'POST', body: JSON.stringify(payload) });
+          toast('Médico registrado.');
+        }
+        resetMedicoForm();
+        await loadMedicos();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+
+    async function toggleMedico(id, estadoActual) {
+      try {
+        await api(`/medicos/${id}/estado?estado=${!estadoActual}`, { method: 'PATCH' });
+        toast('Estado actualizado.');
+        await loadMedicos();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ---------- init ----------
+    checkApi();
+    loadEspecialidades().then(loadMedicos);
+</script>
+
+</body>
+</html>

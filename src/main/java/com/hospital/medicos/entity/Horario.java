@@ -21,7 +21,6 @@ public class Horario {
     public Consultorio getConsultorio() { return consultorio; }
     public void setConsultorio(Consultorio consultorio) { this.consultorio = consultorio; }
 
-    @NotNull(message = "El médico es obligatorio")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "medico_id", nullable = false)
     @JsonIgnoreProperties({"especialidades", "hibernateLazyInitializer", "handler"})

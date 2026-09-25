@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Consulta de Disponibilidad — Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+          --bg: #F5F8FA;
+          --surface: #FFFFFF;
+          --navy: #163247;
+          --teal: #2F8F84;
+          --teal-dark: #22685F;
+          --border: #DCE4EA;
+          --text: #1B2530;
+          --muted: #64778A;
+          --danger: #B23A2E;
+          --danger-bg: #FBEAE8;
+          --ok-bg: #E9F5F1;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; }
+        header { background: var(--navy); color: #fff; padding: 28px 32px 24px; }
+        header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+        header p { margin: 0; color: #A9BECB; font-size: 13.5px; }
+
+        main { max-width: 1080px; margin: 0 auto; padding: 28px 32px 80px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 22px; }
+
+        .filter-grid { display: grid; grid-template-columns: 2fr 1fr auto; gap: 14px; align-items: end; }
+        label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+        input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; background: #fff; }
+
+        button.primary { background: var(--teal); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; height: 42px; }
+        button.primary:hover { background: var(--teal-dark); }
+
+        .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+        .slot-card { padding: 14px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .slot-card.available { background: var(--ok-bg); border-color: #A3D9C9; color: var(--teal-dark); }
+        .slot-card.unavailable { background: var(--danger-bg); border-color: #F3B8B1; color: var(--danger); }
+        .slot-time { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+        .slot-reason { font-size: 12px; opacity: 0.85; }
+
+        .empty { color: var(--muted); font-size: 13.5px; padding: 20px 0; text-align: center; }
+
+        #toast { position: fixed; bottom: 20px; right: 20px; max-width: 340px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; display: none; z-index: 50; }
+        #toast.show { display: block; }
+        #toast.err { background: var(--danger); color: #fff; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Consulta de Disponibilidad</h1>
+    <p>Panel de administración — módulo RF-MED-18</p>
+</header>
+
+<main>
+    <div class="card">
+        <h2>Parámetros de Búsqueda</h2>
+        <div class="filter-grid">
+            <div>
+                <label>Médico *</label>
+                <select id="medicoSelect">
+                    <option value="">-- Seleccionar Médico --</option>
+                </select>
+            </div>
+            <div>
+                <label>Fecha *</label>
+                <input type="date" id="fechaSelect">
+            </div>
+            <div>
+                <button class="primary" onclick="consultarDisponibilidad()">Consultar Turnos</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Slots / Horarios Calculados</h2>
+        <div id="slotsContainer" class="slots-grid"></div>
+        <div class="empty" id="emptyMsg">Selecciona un médico y una fecha para consultar los slots.</div>
+    </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+    function toast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show ' + (isError ? 'err' : 'ok');
+      clearTimeout(toast._h);
+      toast._h = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    // Establecer fecha de hoy por defecto
+    document.getElementById('fechaSelect').value = new Date().toISOString().split('T')[0];
+
+    async function loadMedicos() {
+      try {
+        const res = await fetch('/api/medicos');
+        const data = await res.json();
+        const sel = document.getElementById('medicoSelect');
+        data.forEach(m => {
+          sel.innerHTML += `<option value="${m.id}">${m.nombre}${m.apellido}</option>`;
+        });
+      } catch (e) {
+        toast('Error al obtener lista de médicos', true);
+      }
+    }
+
+    async function consultarDisponibilidad() {
+      const medicoId = document.getElementById('medicoSelect').value;
+      const fecha = document.getElementById('fechaSelect').value;
+      const container = document.getElementById('slotsContainer');
+      const empty = document.getElementById('emptyMsg');
+
+      if (!medicoId || !fecha) {
+        toast('Por favor selecciona un médico y una fecha', true);
+        return;
+      }
+
+      container.innerHTML = '';
+      empty.style.display = 'none';
+
+      try {
+        const res = await fetch(`/api/disponibilidad/medico/${medicoId}?fecha=${fecha}`);
+        if (!res.ok) throw new Error('Error al obtener disponibilidad');
+        const slots = await res.json();
+
+        if (!slots || slots.length === 0) {
+          empty.textContent = 'No hay atención ni horarios programados para esta fecha.';
+          empty.style.display = 'block';
+          return;
+        }
+
+        slots.forEach(s => {
+          const card = document.createElement('div');
+          const isOk = s.disponible;
+          card.className = `slot-card ${isOk ? 'available' : 'unavailable'}`;
+          card.innerHTML = `
+            <div class="slot-time">${s.horaInicio} -${s.horaFin}</div>
+            <div class="slot-reason">${isOk ? 'Disponible' : (s.motivo || 'No disponible')}</div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (e) {
+        toast(e.message, true);
+      }
+    }
+
+    loadMedicos();
+</script>
+</body>
+</html>

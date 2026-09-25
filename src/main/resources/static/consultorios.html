@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestión de Consultorios — Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+          --bg: #F5F8FA;
+          --surface: #FFFFFF;
+          --navy: #163247;
+          --navy-light: #24506E;
+          --teal: #2F8F84;
+          --teal-dark: #22685F;
+          --border: #DCE4EA;
+          --text: #1B2530;
+          --muted: #64778A;
+          --danger: #B23A2E;
+          --danger-bg: #FBEAE8;
+          --ok-bg: #E9F5F1;
+          --warn-bg: #FEF3C7;
+          --warn-text: #92400E;
+        }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          background: var(--bg);
+          color: var(--text);
+          font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+          font-size: 15px;
+          line-height: 1.5;
+        }
+        header {
+          background: var(--navy);
+          color: #fff;
+          padding: 28px 32px 24px;
+        }
+        header h1 {
+          margin: 0 0 4px;
+          font-size: 22px;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+        }
+        header p {
+          margin: 0;
+          color: #A9BECB;
+          font-size: 13.5px;
+        }
+        .api-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 12px;
+          font-size: 12.5px;
+          color: #A9BECB;
+        }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+        .dot.ok { background: #5FBBA2; }
+        .dot.err { background: #E08070; }
+
+        main { max-width: 1080px; margin: 0 auto; padding: 28px 32px 80px; }
+
+        .card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 22px 24px;
+          margin-bottom: 22px;
+        }
+        .card h2 {
+          margin: 0 0 4px;
+          font-size: 17px;
+          font-weight: 600;
+        }
+        .card .hint { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 14px;
+        }
+        label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+        input, select {
+          width: 100%;
+          padding: 9px 10px;
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          font: inherit;
+          background: #fff;
+          color: var(--text);
+        }
+        input:focus, select:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+
+        .form-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+        button.primary {
+          background: var(--teal);
+          color: #fff;
+          border: none;
+          padding: 10px 18px;
+          border-radius: 6px;
+          font: inherit;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        button.primary:hover { background: var(--teal-dark); }
+        button.ghost {
+          background: none;
+          border: 1px solid var(--border);
+          padding: 9px 14px;
+          border-radius: 6px;
+          font: inherit;
+          color: var(--muted);
+          cursor: pointer;
+        }
+        button.ghost:hover { border-color: var(--muted); color: var(--text); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th {
+          text-align: left;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--muted);
+          padding: 8px 10px;
+          border-bottom: 1px solid var(--border);
+        }
+        td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+
+        .badge {
+          display: inline-block;
+          padding: 2px 9px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .badge.disponible { background: var(--ok-bg); color: var(--teal-dark); }
+        .badge.ocupado { background: var(--warn-bg); color: var(--warn-text); }
+        .badge.inactivo { background: var(--danger-bg); color: var(--danger); }
+
+        .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .row-actions button {
+          font-size: 12.5px;
+          padding: 5px 10px;
+          border-radius: 5px;
+          border: 1px solid var(--border);
+          background: #fff;
+          cursor: pointer;
+          color: var(--navy-light);
+        }
+        .row-actions button:hover { background: var(--bg); }
+
+        .empty { color: var(--muted); font-size: 13.5px; padding: 10px 0; }
+
+        #toast {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          max-width: 340px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 13.5px;
+          box-shadow: 0 4px 16px rgba(0,0,0,.15);
+          display: none;
+          z-index: 50;
+        }
+        #toast.show { display: block; }
+        #toast.ok { background: var(--navy); color: #fff; }
+        #toast.err { background: var(--danger); color: #fff; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Gestión de Consultorios</h1>
+    <p>Panel de administración — módulo RF-MED-15</p>
+    <div class="api-status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Verificando conexión con la API…</span>
+    </div>
+</header>
+
+<main>
+    <div class="card">
+        <h2 id="formTitle">Registrar consultorio</h2>
+        <p class="hint">RF-MED-15 · El código debe ser único (ej. C-205).</p>
+        <form id="consultorioForm">
+            <input type="hidden" id="consultorioId">
+            <div class="grid">
+                <div>
+                    <label>Código *</label>
+                    <input id="codigo" placeholder="Ej. C-101" required>
+                </div>
+                <div>
+                    <label>Nombre *</label>
+                    <input id="nombre" placeholder="Ej. Consultorio Pediatría" required>
+                </div>
+                <div>
+                    <label>Piso</label>
+                    <input id="piso" placeholder="Ej. Piso 2">
+                </div>
+                <div>
+                    <label>Área</label>
+                    <input id="area" placeholder="Ej. Ala Norte">
+                </div>
+                <div>
+                    <label>Estado</label>
+                    <select id="estado">
+                        <option value="DISPONIBLE">DISPONIBLE</option>
+                        <option value="OCUPADO">OCUPADO</option>
+                        <option value="INACTIVO">INACTIVO</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="primary" id="submitBtn">Guardar consultorio</button>
+                <button type="button" class="ghost" id="cancelBtn" style="display:none">Cancelar edición</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Consultorios registrados</h2>
+        <p class="hint">Listado general de ambientes y estados</p>
+        <table>
+            <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Piso</th>
+                <th>Área</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+            </thead>
+            <tbody id="consultorioTbody"></tbody>
+        </table>
+        <div class="empty" id="consultorioEmpty" style="display:none">Aún no hay consultorios registrados.</div>
+    </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+    const API = '/api/consultorios';
+    let consultoriosCache = [];
+
+    function toast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show ' + (isError ? 'err' : 'ok');
+      clearTimeout(toast._h);
+      toast._h = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    async function api(path = '', options = {}) {
+      const res = await fetch(API + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      let body = null;
+      try { body = await res.json(); } catch (e) {}
+      if (!res.ok) {
+        let msg = (body && (body.error || (body.errores && Object.values(body.errores).join(', ')))) || ('Error ' + res.status);
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    async function checkApi() {
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+      try {
+        await loadConsultorios();
+        dot.className = 'dot ok';
+        txt.textContent = 'Conectado exitosamente con la API';
+      } catch (e) {
+        dot.className = 'dot err';
+        txt.textContent = 'Sin conexión con la API';
+      }
+    }
+
+    async function loadConsultorios() {
+      try {
+        consultoriosCache = await api();
+        renderConsultorios();
+      } catch (e) {
+        toast('Error al cargar consultorios: ' + e.message, true);
+      }
+    }
+
+    function renderConsultorios() {
+      const tbody = document.getElementById('consultorioTbody');
+      tbody.innerHTML = '';
+      document.getElementById('consultorioEmpty').style.display = consultoriosCache.length ? 'none' : 'block';
+
+      consultoriosCache.forEach(c => {
+        const tr = document.createElement('tr');
+        const estadoClass = c.estado ? c.estado.toLowerCase() : 'disponible';
+
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(c.codigo)}</strong></td>
+          <td>${escapeHtml(c.nombre)}</td>
+          <td>${escapeHtml(c.piso || '—')}</td>
+          <td>${escapeHtml(c.area || '—')}</td>
+          <td><span class="badge ${estadoClass}">${escapeHtml(c.estado)}</span></td>
+          <td class="row-actions">
+            <button data-edit="${c.id}">Editar</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editConsultorio(b.dataset.edit)));
+    }
+
+    function editConsultorio(id) {
+      const c = consultoriosCache.find(x => String(x.id) === String(id));
+      if (!c) return;
+      document.getElementById('consultorioId').value = c.id;
+      document.getElementById('codigo').value = c.codigo;
+      document.getElementById('nombre').value = c.nombre;
+      document.getElementById('piso').value = c.piso || '';
+      document.getElementById('area').value = c.area || '';
+      document.getElementById('estado').value = c.estado || 'DISPONIBLE';
+
+      document.getElementById('formTitle').textContent = 'Modificar consultorio';
+      document.getElementById('submitBtn').textContent = 'Guardar cambios';
+      document.getElementById('cancelBtn').style.display = 'inline-block';
+    }
+
+    function resetForm() {
+      document.getElementById('consultorioForm').reset();
+      document.getElementById('consultorioId').value = '';
+      document.getElementById('formTitle').textContent = 'Registrar consultorio';
+      document.getElementById('submitBtn').textContent = 'Guardar consultorio';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    document.getElementById('cancelBtn').addEventListener('click', resetForm);
+
+    document.getElementById('consultorioForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const id = document.getElementById('consultorioId').value;
+      const payload = {
+        id: id ? Number(id) : null,
+        codigo: document.getElementById('codigo').value.trim(),
+        nombre: document.getElementById('nombre').value.trim(),
+        piso: document.getElementById('piso').value.trim(),
+        area: document.getElementById('area').value.trim(),
+        estado: document.getElementById('estado').value
+      };
+
+      try {
+        await api('', { method: 'POST', body: JSON.stringify(payload) });
+        toast(id ? 'Consultorio actualizado.' : 'Consultorio registrado.');
+        resetForm();
+        await loadConsultorios();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    checkApi();
+</script>
+</body>
+</html>

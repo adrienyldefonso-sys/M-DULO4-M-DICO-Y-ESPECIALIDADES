@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reportes — Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+          --bg: #F5F8FA;
+          --surface: #FFFFFF;
+          --navy: #163247;
+          --teal: #2F8F84;
+          --border: #DCE4EA;
+          --text: #1B2530;
+          --muted: #64778A;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; }
+        header { background: var(--navy); color: #fff; padding: 28px 32px 24px; }
+        header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+        header p { margin: 0; color: #A9BECB; font-size: 13.5px; }
+
+        main { max-width: 1080px; margin: 0 auto; padding: 28px 32px 80px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 22px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+        th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 10px; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+
+        .bar-container { background: #EAF0F4; border-radius: 10px; height: 12px; overflow: hidden; width: 100%; }
+        .bar-fill { background: var(--teal); height: 100%; border-radius: 10px; transition: width 0.4s ease; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Reportes y Estadísticas</h1>
+    <p>Panel de administración — módulo RF-MED-21</p>
+</header>
+
+<main>
+    <div class="card">
+        <h2>Médicos Activos por Especialidad</h2>
+        <p style="color: var(--muted); font-size: 13px;">Métrica general de personal médico asignado y activo por área clínica</p>
+        <table>
+            <thead>
+            <tr>
+                <th>Especialidad</th>
+                <th>Cantidad de Médicos</th>
+                <th style="width: 40%;">Proporción</th>
+            </tr>
+            </thead>
+            <tbody id="reporteTbody"></tbody>
+        </table>
+    </div>
+</main>
+
+<script>
+    async function cargarReporte() {
+      try {
+        const res = await fetch('/api/reportes/medicos-por-especialidad');
+        const data = await res.json();
+
+        const tbody = document.getElementById('reporteTbody');
+        tbody.innerHTML = '';
+
+        let maxMedicos = Math.max(...data.map(d => d.cantidadMedicos), 1);
+
+        data.forEach(row => {
+          const pct = (row.cantidadMedicos / maxMedicos) * 100;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${row.especialidad}</strong></td>
+            <td>${row.cantidadMedicos} médico(s)</td>
+            <td>
+              <div class="bar-container">
+                <div class="bar-fill" style="width: ${pct}%"></div>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (e) {
+        console.error('Error cargando reporte:', e);
+      }
+    }
+
+    cargarReporte();
+</script>
+</body>
+</html>

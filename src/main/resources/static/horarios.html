@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestión de Horarios y Bloqueos — Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+          --bg: #F5F8FA;
+          --surface: #FFFFFF;
+          --navy: #163247;
+          --navy-light: #24506E;
+          --teal: #2F8F84;
+          --teal-dark: #22685F;
+          --border: #DCE4EA;
+          --text: #1B2530;
+          --muted: #64778A;
+          --danger: #B23A2E;
+          --danger-bg: #FBEAE8;
+          --ok-bg: #E9F5F1;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; }
+        header { background: var(--navy); color: #fff; padding: 28px 32px 24px; }
+        header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+        header p { margin: 0; color: #A9BECB; font-size: 13.5px; }
+
+        main { max-width: 1080px; margin: 0 auto; padding: 28px 32px 80px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 22px; }
+        .card h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+        .card .hint { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+        label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+        input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; background: #fff; color: var(--text); }
+        input:focus, select:focus { outline: 2px solid var(--teal); border-color: var(--teal); }
+
+        .form-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+        button.primary { background: var(--teal); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+        button.primary:hover { background: var(--teal-dark); }
+        button.ghost { background: none; border: 1px solid var(--border); padding: 9px 14px; border-radius: 6px; font: inherit; color: var(--muted); cursor: pointer; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge.on { background: var(--ok-bg); color: var(--teal-dark); }
+        .badge.off { background: var(--danger-bg); color: var(--danger); }
+
+        .row-actions button { font-size: 12.5px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: #fff; cursor: pointer; color: var(--navy-light); }
+        .empty { color: var(--muted); font-size: 13.5px; padding: 10px 0; }
+
+        #toast { position: fixed; bottom: 20px; right: 20px; max-width: 340px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; display: none; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+        #toast.show { display: block; }
+        #toast.ok { background: var(--navy); color: #fff; }
+        #toast.err { background: var(--danger); color: #fff; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Horarios y Bloqueos de Atención</h1>
+    <p>Panel de administración — módulo RF-MED-11, RF-MED-12 y RF-MED-13</p>
+</header>
+
+<main>
+    <!-- Seleccionar Médico -->
+    <div class="card" style="background: #EAF0F4;">
+        <h2>1. Selecciona un Médico</h2>
+        <p class="hint">Elige el profesional para administrar su agenda y bloqueos puntuales</p>
+        <div>
+            <select id="medicoSelect" onchange="onMedicoChange()">
+                <option value="">-- Seleccionar Médico --</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="seccionesAgenda" style="display:none;">
+        <!-- REGISTRAR HORARIO -->
+        <div class="card">
+            <h2 id="horarioFormTitle">Registrar Horario Regular</h2>
+            <p class="hint">RF-MED-11 · Configura el turno recurrente semanal del médico</p>
+            <form id="horarioForm">
+                <input type="hidden" id="horarioId">
+                <div class="grid">
+                    <div>
+                        <label>Día de la semana *</label>
+                        <select id="diaSemana" required>
+                            <option value="LUNES">LUNES</option>
+                            <option value="MARTES">MARTES</option>
+                            <option value="MIERCOLES">MIÉRCOLES</option>
+                            <option value="JUEVES">JUEVES</option>
+                            <option value="VIERNES">VIERNES</option>
+                            <option value="SABADO">SÁBADO</option>
+                            <option value="DOMINGO">DOMINGO</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Hora Inicio *</label>
+                        <input type="time" id="horaInicio" required>
+                    </div>
+                    <div>
+                        <label>Hora Fin *</label>
+                        <input type="time" id="horaFin" required>
+                    </div>
+                    <div>
+                        <label>Duración cita (minutos) *</label>
+                        <input type="number" id="duracionCitaMinutos" value="30" min="5" max="120" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="primary" id="horarioSubmitBtn">Guardar Horario</button>
+                    <button type="button" class="ghost" id="horarioCancelBtn" style="display:none" onclick="resetHorarioForm()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- LISTADO HORARIOS -->
+        <div class="card">
+            <h2>Horarios Registrados</h2>
+            <table>
+                <thead>
+                <tr><th>Día</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Estado</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="horariosTbody"></tbody>
+            </table>
+            <div class="empty" id="horariosEmpty" style="display:none">El médico no tiene horarios registrados.</div>
+        </div>
+
+        <!-- BLOQUEOS PUNTUALES -->
+        <div class="card">
+            <h2>Bloquear Horario (Permiso / Licencia / Evento)</h2>
+            <p class="hint">RF-MED-13 · Inhabilita un rango de horas en una fecha específica</p>
+            <form id="bloqueoForm">
+                <div class="grid">
+                    <div>
+                        <label>Fecha *</label>
+                        <input type="date" id="bloqueoFecha" required>
+                    </div>
+                    <div>
+                        <label>Hora Inicio *</label>
+                        <input type="time" id="bloqueoHoraInicio" required>
+                    </div>
+                    <div>
+                        <label>Hora Fin *</label>
+                        <input type="time" id="bloqueoHoraFin" required>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label>Motivo *</label>
+                        <input id="bloqueoMotivo" placeholder="Ej. Capacitación / Vacaciones" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="primary">Registrar Bloqueo</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Bloqueos Activos</h2>
+            <table>
+                <thead>
+                <tr><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Motivo</th><th>Estado</th></tr>
+                </thead>
+                <tbody id="bloqueosTbody"></tbody>
+            </table>
+            <div class="empty" id="bloqueosEmpty" style="display:none">No hay bloqueos registrados.</div>
+        </div>
+    </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+    let medicosCache = [];
+    let horariosCache = [];
+    let bloqueosCache = [];
+
+    function toast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show ' + (isError ? 'err' : 'ok');
+      clearTimeout(toast._h);
+      toast._h = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    async function api(path, options) {
+      const res = await fetch('/api' + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      let body = null;
+      try { body = await res.json(); } catch (e) {}
+      if (!res.ok) {
+        let msg = (body && (body.error || (body.errores && Object.values(body.errores).join(', ')))) || ('Error ' + res.status);
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    async function loadMedicos() {
+      try {
+        medicosCache = await api('/medicos');
+        const sel = document.getElementById('medicoSelect');
+        sel.innerHTML = '<option value="">-- Seleccionar Médico --</option>';
+        medicosCache.forEach(m => {
+          sel.innerHTML += `<option value="${m.id}">${m.nombre} ${m.apellido} (CMP:${m.cmp})</option>`;
+        });
+      } catch (e) {
+        toast('Error al cargar médicos: ' + e.message, true);
+      }
+    }
+
+    async function onMedicoChange() {
+      const medicoId = document.getElementById('medicoSelect').value;
+      const sec = document.getElementById('seccionesAgenda');
+      if (!medicoId) {
+        sec.style.display = 'none';
+        return;
+      }
+      sec.style.display = 'block';
+      resetHorarioForm();
+      await loadHorarios(medicoId);
+      await loadBloqueos(medicoId);
+    }
+
+    async function loadHorarios(medicoId) {
+      try {
+        horariosCache = await api(`/horarios/medico/${medicoId}`);
+        renderHorarios();
+      } catch (e) {
+        toast('Error al cargar horarios: ' + e.message, true);
+      }
+    }
+
+    function renderHorarios() {
+      const tbody = document.getElementById('horariosTbody');
+      tbody.innerHTML = '';
+      document.getElementById('horariosEmpty').style.display = horariosCache.length ? 'none' : 'block';
+
+      horariosCache.forEach(h => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${h.diaSemana}</strong></td>
+          <td>${h.horaInicio}</td>
+          <td>${h.horaFin}</td>
+          <td>${h.duracionCitaMinutos} min</td>
+          <td><span class="badge ${h.estado ? 'on' : 'off'}">${h.estado ? 'Activo' : 'Inactivo'}</span></td>
+          <td class="row-actions">
+            <button onclick="editHorario(${h.id})">Editar</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function editHorario(id) {
+      const h = horariosCache.find(x => x.id === id);
+      if (!h) return;
+      document.getElementById('horarioId').value = h.id;
+      document.getElementById('diaSemana').value = h.diaSemana;
+      document.getElementById('horaInicio').value = h.horaInicio.substring(0, 5);
+      document.getElementById('horaFin').value = h.horaFin.substring(0, 5);
+      document.getElementById('duracionCitaMinutos').value = h.duracionCitaMinutos;
+
+      document.getElementById('horarioFormTitle').textContent = 'Modificar Horario';
+      document.getElementById('horarioSubmitBtn').textContent = 'Guardar Cambios';
+      document.getElementById('horarioCancelBtn').style.display = 'inline-block';
+    }
+
+    function resetHorarioForm() {
+      document.getElementById('horarioForm').reset();
+      document.getElementById('horarioId').value = '';
+      document.getElementById('horarioFormTitle').textContent = 'Registrar Horario Regular';
+      document.getElementById('horarioSubmitBtn').textContent = 'Guardar Horario';
+      document.getElementById('horarioCancelBtn').style.display = 'none';
+    }
+
+    document.getElementById('horarioForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const medicoId = document.getElementById('medicoSelect').value;
+      const id = document.getElementById('horarioId').value;
+
+      const payload = {
+        diaSemana: document.getElementById('diaSemana').value,
+        horaInicio: document.getElementById('horaInicio').value + ':00',
+        horaFin: document.getElementById('horaFin').value + ':00',
+        duracionCitaMinutos: Number(document.getElementById('duracionCitaMinutos').value),
+        estado: true
+      };
+
+      try {
+        if (id) {
+          await api(`/horarios/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+          toast('Horario actualizado');
+        } else {
+          await api(`/horarios/medico/${medicoId}`, { method: 'POST', body: JSON.stringify(payload) });
+          toast('Horario registrado');
+        }
+        resetHorarioForm();
+        await loadHorarios(medicoId);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+
+    async function loadBloqueos(medicoId) {
+      try {
+        bloqueosCache = await api(`/horarios/medico/${medicoId}/bloqueos`);
+        renderBloqueos();
+      } catch (e) {
+        toast('Error al cargar bloqueos: ' + e.message, true);
+      }
+    }
+
+    function renderBloqueos() {
+      const tbody = document.getElementById('bloqueosTbody');
+      tbody.innerHTML = '';
+      document.getElementById('bloqueosEmpty').style.display = bloqueosCache.length ? 'none' : 'block';
+
+      bloqueosCache.forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${b.fecha}</strong></td>
+          <td>${b.horaInicio}</td>
+          <td>${b.horaFin}</td>
+          <td>${escapeHtml(b.motivo)}</td>
+          <td><span class="badge off">${b.estado}</span></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('bloqueoForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const medicoId = document.getElementById('medicoSelect').value;
+      const payload = {
+        fecha: document.getElementById('bloqueoFecha').value,
+        horaInicio: document.getElementById('bloqueoHoraInicio').value + ':00',
+        horaFin: document.getElementById('bloqueoHoraFin').value + ':00',
+        motivo: document.getElementById('bloqueoMotivo').value.trim(),
+        estado: 'BLOQUEADO'
+      };
+
+      try {
+        await api(`/horarios/medico/${medicoId}/bloqueos`, { method: 'POST', body: JSON.stringify(payload) });
+        toast('Bloqueo registrado correctamente');
+        document.getElementById('bloqueoForm').reset();
+        await loadBloqueos(medicoId);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    loadMedicos();
+</script>
+</body>
+</html>
