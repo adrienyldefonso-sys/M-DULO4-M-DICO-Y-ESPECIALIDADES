@@ -47,6 +47,14 @@ public class Medico {
     )
     @JsonIgnoreProperties("medicos")
     private List<Especialidad> especialidades = new ArrayList<>();
+    // 1 médico <-> 1 usuario (opcional: un médico puede no tener acceso al sistema)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", unique = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Usuario usuario;
+
+    public Usuario getUsuario() { return usuario; }
+    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
 
     public Medico() {}
 
