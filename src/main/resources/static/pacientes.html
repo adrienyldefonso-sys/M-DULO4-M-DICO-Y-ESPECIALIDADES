@@ -1,10 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pacientes</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css?v=20261019-1">
 </head>
 <body>
-$END$
+<div id="top"></div>
+<main>
+    <div class="card">
+        <h2 id="tit">Registrar paciente</h2>
+        <form id="f">
+            <input type="hidden" id="pid">
+            <div class="grid">
+                <div><label>DNI</label><input id="dni" required></div>
+                <div><label>Nombres</label><input id="nom" required></div>
+                <div><label>Apellidos</label><input id="ape" required></div>
+                <div><label>Fecha de nacimiento</label><input id="nac" type="date"></div>
+                <div><label>Teléfono</label><input id="tel"></div>
+                <div><label>Correo</label><input id="cor" type="email"></div>
+                <div><label>Dirección</label><input id="dir"></div>
+            </div>
+            <div class="acts">
+                <button class="primary" id="btn">Registrar paciente</button>
+                <button type="button" class="ghost hidden" id="can" onclick="limpiar()">Cancelar edición</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Pacientes registrados</h2>
+        <div class="grid"><div><label>Buscar por DNI o nombre</label><input id="q" oninput="pintar()"></div></div>
+        <table>
+            <thead><tr><th>DNI</th><th>Paciente</th><th>Contacto</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="body"></tbody>
+        </table>
+    </div>
+</main>
+<div id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+    const { $, esc, badge, toast, api } = App;
+    App.layout('Pacientes');
+    let lista = [];
+
+    async function cargar() {
+      try { lista = await api('/pacientes'); pintar(); } catch (e) { toast(e.message, true); }
+    }
+
+    function pintar() {
+      const q = $('#q').value.toLowerCase();
+      const filas = lista.filter(p => (p.dni + ' ' + p.nombres + ' ' + p.apellidos).toLowerCase().includes(q));
+      $('#body').innerHTML = filas.map(p => `<tr>
+        <td>${esc(p.dni)}</td>
+        <td><b>${esc(p.nombres)} ${esc(p.apellidos)}</b><br><span style="color:var(--m)">${esc(p.fechaNacimiento || '')}</span></td>
+        <td>${esc(p.telefono || '—')}<br><span style="color:var(--m)">${esc(p.correo || '')}</span></td>
+        <td>${badge(p.estado)}</td>
+        <td><button onclick="editar(${p.id})">Editar</button><button onclick="alternar(${p.id},${p.estado})">${p.estado ? 'Desactivar' : 'Activar'}</button></td>
+      </tr>`).join('') || '<tr><td colspan="5">Sin resultados</td></tr>';
+    }
+
+    function editar(id) {
+      const p = lista.find(x => x.id === id);
+      $('#pid').value = id; $('#dni').value = p.dni; $('#nom').value = p.nombres; $('#ape').value = p.apellidos;
+      $('#nac').value = p.fechaNacimiento || ''; $('#tel').value = p.telefono || ''; $('#cor').value = p.correo || ''; $('#dir').value = p.direccion || '';
+      $('#tit').textContent = 'Modificar paciente'; $('#btn').textContent = 'Guardar cambios'; $('#can').classList.remove('hidden');
+      scrollTo(0, 0);
+    }
+
+    function limpiar() {
+      $('#f').reset(); $('#pid').value = '';
+      $('#tit').textContent = 'Registrar paciente'; $('#btn').textContent = 'Registrar paciente'; $('#can').classList.add('hidden');
+    }
+
+    $('#f').onsubmit = async e => {
+      e.preventDefault();
+      const id = $('#pid').value;
+      const body = {
+        dni: $('#dni').value.trim(), nombres: $('#nom').value.trim(), apellidos: $('#ape').value.trim(),
+        fechaNacimiento: $('#nac').value || null, telefono: $('#tel').value.trim(), correo: $('#cor').value.trim(), direccion: $('#dir').value.trim()
+      };
+      try {
+        await api(id ? '/pacientes/' + id : '/pacientes', { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+        toast(id ? 'Paciente actualizado' : 'Paciente registrado'); limpiar(); cargar();
+      } catch (x) { toast(x.message, true); }
+    };
+
+    async function alternar(id, estado) {
+      try { await api(`/pacientes/${id}/estado?estado=${!estado}`, { method: 'PATCH' }); toast('Estado actualizado'); cargar(); }
+      catch (x) { toast(x.message, true); }
+    }
+
+    cargar();
+</script>
 </body>
 </html>

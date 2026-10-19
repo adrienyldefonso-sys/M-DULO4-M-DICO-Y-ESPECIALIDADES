@@ -9,5 +9,6 @@ public interface MedicoService {
     List<Medico> obtenerTodos();                                       // RF-MED-03
     Medico obtenerPorId(Long id);                                      // RF-MED-03
     Medico cambiarEstado(Long id, Boolean estado);                     // RF-MED-04
-    Medico asociarEspecialidades(Long medicoId, List<Long> especialidadIds); // RF-MED-06
+    Medico asociarEspecialidades(Long medicoId, List<Long> especialidadIds);
+    Medico asociarUsuario(Long medicoId, Long usuarioId);// RF-MED-06
 }

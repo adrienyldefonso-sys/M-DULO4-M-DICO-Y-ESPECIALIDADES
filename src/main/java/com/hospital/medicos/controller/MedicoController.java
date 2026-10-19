@@ -52,4 +52,11 @@ public class MedicoController {
             @RequestBody List<Long> especialidadIds) {
         return ResponseEntity.ok(medicoService.asociarEspecialidades(medicoId, especialidadIds));
     }
+
+    @PatchMapping("/{medicoId}/usuario/{usuarioId}")
+    public ResponseEntity<Medico> asociarUsuario(
+            @PathVariable Long medicoId,
+            @PathVariable Long usuarioId) {
+        return ResponseEntity.ok(medicoService.asociarUsuario(medicoId, usuarioId));
+    }
 }

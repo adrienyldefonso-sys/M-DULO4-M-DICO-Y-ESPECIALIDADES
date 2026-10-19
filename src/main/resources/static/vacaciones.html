@@ -1,10 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vacaciones y permisos</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css?v=20261019-1">
 </head>
 <body>
-$END$
+<div id="top"></div>
+<main>
+    <div class="card">
+        <div class="grid" style="margin:0"><div><label>Médico</label><select id="medico" onchange="cargar()"></select></div></div>
+    </div>
+    <div class="card">
+        <h2 id="tit">Registrar vacaciones o permiso</h2>
+        <form id="f">
+            <input type="hidden" id="vid">
+            <div class="grid">
+                <div><label>Desde</label><input id="fi" type="date" required></div>
+                <div><label>Hasta</label><input id="ff" type="date" required></div>
+                <div><label>Motivo</label><input id="mot" placeholder="Vacaciones, permiso..."></div>
+            </div>
+            <div class="acts"><button class="primary" id="btn">Registrar</button><button type="button" class="ghost hidden" id="can" onclick="limpiar()">Cancelar edición</button></div>
+        </form>
+    </div>
+    <div class="card"><h2>Períodos registrados</h2>
+        <p class="mut" style="margin-top:0">En estas fechas el médico figura como no disponible en el cálculo de disponibilidad.</p>
+        <table><thead><tr><th>Desde</th><th>Hasta</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="body"></tbody></table>
+    </div>
+</main>
+<div id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+    const { $, esc, toast, api, admin } = App;
+    App.layout('Vacaciones y permisos', true);
+    let lista = [];
+    const mid = () => $('#medico').value;
+
+    async function init() {
+      try {
+        const med = (await api('/medicos')).filter(m => m.estado);
+        $('#medico').innerHTML = med.map(m => `<option value="${m.id}">${esc(m.nombre)} ${esc(m.apellido)}</option>`).join('');
+        cargar();
+      } catch (e) { toast(e.message, true); }
+    }
+    async function cargar() {
+      if (!mid()) return;
+      try {
+        lista = await api('/vacaciones/medico/' + mid());
+        $('#body').innerHTML = lista.map(v => `<tr><td>${esc(v.fechaInicio)}</td><td>${esc(v.fechaFin)}</td><td>${esc(v.motivo || '—')}</td><td>${esc(v.estado)}</td>
+          <td><button onclick="editar(${v.id})">Editar</button><button class="rojo" onclick="eliminar(${v.id})">Eliminar</button></td></tr>`).join('')
+          || '<tr><td colspan="5">Sin vacaciones ni permisos registrados</td></tr>';
+      } catch (e) { toast(e.message, true); }
+    }
+    function editar(id) {
+      const v = lista.find(x => x.id === id);
+      $('#vid').value = id; $('#fi').value = v.fechaInicio; $('#ff').value = v.fechaFin; $('#mot').value = v.motivo || '';
+      $('#tit').textContent = 'Modificar período'; $('#btn').textContent = 'Guardar cambios'; $('#can').classList.remove('hidden'); scrollTo(0, 0);
+    }
+    function limpiar() { $('#f').reset(); $('#vid').value = ''; $('#tit').textContent = 'Registrar vacaciones o permiso'; $('#btn').textContent = 'Registrar'; $('#can').classList.add('hidden'); }
+    $('#f').onsubmit = async e => {
+      e.preventDefault(); const id = $('#vid').value;
+      const body = { fechaInicio: $('#fi').value, fechaFin: $('#ff').value, motivo: $('#mot').value.trim() };
+      try { await api(id ? '/vacaciones/' + id : '/vacaciones/medico/' + mid(), { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) }); toast(id ? 'Período actualizado' : 'Período registrado'); limpiar(); cargar(); } catch (x) { toast(x.message, true); }
+    };
+    // Eliminación real: queda registrada como ELIMINACION en la auditoría
+    async function eliminar(id) {
+      if (!confirm('¿Eliminar este período?')) return;
+      try { await api('/vacaciones/' + id, { method: 'DELETE' }); toast('Período eliminado'); cargar(); } catch (x) { toast(x.message, true); }
+    }
+    init();
+</script>
 </body>
 </html>

@@ -14,7 +14,6 @@ public class VacacionPermiso {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "medico_id", nullable = false)
     @JsonIgnoreProperties({"especialidades", "hibernateLazyInitializer", "handler"})

@@ -1,10 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Citas</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css?v=20261019-1">
 </head>
 <body>
-$END$
+<div id="top"></div>
+<main>
+    <div class="card">
+        <h2 id="tit">Registrar cita</h2>
+        <form id="f">
+            <input type="hidden" id="cid">
+            <div class="grid">
+                <div><label>Paciente</label><select id="paciente" required></select></div>
+                <div><label>Médico</label><select id="medico" required onchange="espDeMedico()"></select></div>
+                <div><label>Especialidad (del médico elegido)</label><select id="especialidad" required></select></div>
+            </div>
+            <div class="grid">
+                <div><label>Fecha</label><input id="fecha" type="date" required></div>
+                <div><label>Hora de inicio</label><input id="hi" type="time" required></div>
+                <div><label>Hora de fin</label><input id="hf" type="time" required></div>
+                <div><label>Motivo</label><input id="motivo"></div>
+            </div>
+            <div class="acts">
+                <button class="primary" id="btn">Registrar cita</button>
+                <button type="button" class="ghost hidden" id="can" onclick="limpiar()">Cancelar edición</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Citas registradas</h2>
+        <table>
+            <thead><tr><th>Fecha y hora</th><th>Paciente</th><th>Médico</th><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="body"></tbody>
+        </table>
+    </div>
+</main>
+<div id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+    const { $, esc, toast, api } = App;
+    App.layout('Citas');
+    let pac = [], med = [], citas = [];
+    const hms = v => v.length === 5 ? v + ':00' : v;
+    const hoy = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const CLASE = { PROGRAMADA: 'on-b', ATENDIDA: 'info-b', CANCELADA: 'off-b' };
+
+    async function init() {
+      try {
+        [pac, med] = await Promise.all([api('/pacientes'), api('/medicos')]);
+        pac = pac.filter(p => p.estado); med = med.filter(m => m.estado);
+        $('#paciente').innerHTML = pac.map(p => `<option value="${p.id}">${esc(p.dni)} — ${esc(p.nombres)} ${esc(p.apellidos)}</option>`).join('');
+        $('#medico').innerHTML = med.map(m => `<option value="${m.id}">${esc(m.nombre)} ${esc(m.apellido)}</option>`).join('');
+        $('#fecha').min = hoy();
+        espDeMedico(); cargar();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    // La cita solo permite las especialidades que el médico elegido tiene asociadas
+    function espDeMedico(sel) {
+      const m = med.find(x => x.id == $('#medico').value);
+      const es = ((m && m.especialidades) || []).filter(e => e.estado);
+      $('#especialidad').innerHTML = es.map(e => `<option value="${e.id}">${esc(e.nombre)}</option>`).join('') || '<option value="">El médico no tiene especialidades</option>';
+      if (sel) $('#especialidad').value = sel;
+    }
+
+    async function cargar() {
+      try {
+        citas = await api('/citas');
+        citas.sort((a, b) => (b.fecha + b.horaInicio).localeCompare(a.fecha + a.horaInicio));
+        $('#body').innerHTML = citas.map(c => `<tr>
+          <td><b>${esc(c.fecha)}</b><br>${esc(c.horaInicio.slice(0, 5))} – ${esc(c.horaFin.slice(0, 5))}</td>
+          <td>${esc(c.paciente.nombres)} ${esc(c.paciente.apellidos)}<br><span style="color:var(--m)">${esc(c.motivo || '')}</span></td>
+          <td>${esc(c.medico.nombre)} ${esc(c.medico.apellido)}</td>
+          <td>${esc(c.especialidad.nombre)}</td>
+          <td><span class="badge ${CLASE[c.estado]}">${esc(c.estado)}</span></td>
+          <td>${c.estado === 'PROGRAMADA'
+            ? `<button onclick="editar(${c.id})">Editar</button><button onclick="estado(${c.id},'ATENDIDA')">Atendida</button><button class="rojo" onclick="estado(${c.id},'CANCELADA')">Cancelar</button>`
+            : '—'}</td>
+        </tr>`).join('') || '<tr><td colspan="6">Aún no hay citas</td></tr>';
+      } catch (e) { toast(e.message, true); }
+    }
+
+    function editar(id) {
+      const c = citas.find(x => x.id === id);
+      $('#cid').value = id; $('#paciente').value = c.paciente.id; $('#medico').value = c.medico.id;
+      espDeMedico(c.especialidad.id);
+      $('#fecha').value = c.fecha; $('#hi').value = c.horaInicio.slice(0, 5); $('#hf').value = c.horaFin.slice(0, 5); $('#motivo').value = c.motivo || '';
+      $('#tit').textContent = 'Modificar cita'; $('#btn').textContent = 'Guardar cambios'; $('#can').classList.remove('hidden');
+      scrollTo(0, 0);
+    }
+
+    function limpiar() {
+      $('#f').reset(); $('#cid').value = ''; espDeMedico();
+      $('#tit').textContent = 'Registrar cita'; $('#btn').textContent = 'Registrar cita'; $('#can').classList.add('hidden');
+    }
+
+    $('#f').onsubmit = async e => {
+      e.preventDefault();
+      const id = $('#cid').value;
+      const body = {
+        paciente: { id: +$('#paciente').value }, medico: { id: +$('#medico').value }, especialidad: { id: +$('#especialidad').value },
+        fecha: $('#fecha').value, horaInicio: hms($('#hi').value), horaFin: hms($('#hf').value), motivo: $('#motivo').value.trim()
+      };
+      try {
+        await api(id ? '/citas/' + id : '/citas', { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+        toast(id ? 'Cita actualizada' : 'Cita registrada'); limpiar(); cargar();
+      } catch (x) { toast(x.message, true); }
+    };
+
+    async function estado(id, nuevo) {
+      if (nuevo === 'CANCELADA' && !confirm('¿Cancelar esta cita?')) return;
+      try { await api(`/citas/${id}/estado?estado=${nuevo}`, { method: 'PATCH' }); toast('Cita ' + nuevo.toLowerCase()); cargar(); }
+      catch (x) { toast(x.message, true); }
+    }
+
+    init();
+</script>
 </body>
 </html>
